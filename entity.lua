@@ -1,7 +1,7 @@
 local M = {}
-local class = require 'engine.clasp'
-local skiplist = require 'engine.skiplist'
-local lume = require 'engine.lume'
+local class = require 'xhh2d.clasp'
+local skiplist = require 'xhh2d.skiplist'
+local lume = require 'xhh2d.lume'
 
 local lg = love.graphics
 local math_floor = math.floor
@@ -68,7 +68,7 @@ local Instance = class {
     draw = function(self)
         if self.render then 
             if M.auto_stack then 
-                love.graphics.push() 
+                love.graphics.push('all') 
 
                 lg.translate(-floor(self.ox or 0), -floor(self.oy or 0))
                 lg.scale(self.sx or 1, self.sy)
@@ -117,7 +117,7 @@ function M.new(opts)
             instance._name = opts.name or 'entity'
             instance.render = opts.render
 
-            args = lume.merge( opts.defaults or {}, args or {})
+            args = lume.merge(opts.defaults or {}, args or {})
             for k, v in pairs(args or {}) do 
                 assert(not instance[k], k .. ' is a reserved entity property')
                 instance[k] = v
@@ -132,6 +132,11 @@ function M.new(opts)
             return instance
         end
     })
+    for k, v in pairs(opts) do 
+        if lume.find({'name', 'render', 'defaults'}, k) ~= nil then 
+            spawner[k] = v
+        end
+    end
     M.spawner[opts.name] = spawner
     return spawner
 end
@@ -186,4 +191,9 @@ function M.tree(node, depth)
     return str
 end 
 
-return M
+return setmetatable(M, {
+    __call = function(_, name, ...)
+        assert(M.spanwer[name], 'Entity spawner not found: '..tostring(name))
+        return M.spawner[name](...)
+    end
+})

@@ -13,14 +13,16 @@ state.pop()
 
 -- entity
 circle = entity.new{
-  render = function(props, children) end,
-  defaults = {},
-  name = 'circle'
+  name = 'circle',
+  render = function(props, children) end
 }
-entity1 = circle{ ... } -- override default values
+entity1 = x.entity.circle{ ... } -- override default values
+-- entity('circle', {...})
 entity.destroy(entity1)
 print(entity.tree(entity1))
 
+entity1._id
+entity1.children -- skiplist
 -- entity instance (if there was a circle entity class)
 entity1:add(child1, child2, ...) -- self
 entity1:z(newIndex) -- self.z
@@ -35,6 +37,12 @@ for e, ent in circle:all() do end
 
 -- system
 system.new(function(dt) end)
+
+-- skiplist
+sl:insert(v)
+sl:delete(v)
+for i, v in sl:iter() do
+sl:visualize()
 ```
 
 ## example
@@ -42,13 +50,13 @@ system.new(function(dt) end)
 main.lua
 
 ```lua
-g = require 'engine'
+x2d = require 'xhh2d'
 lg = nil
 
-function g.load()
+function x2d.load()
   lg = love.graphics
 
-  state.push(start)
+  state.push(x2d.state.start)
 end
 ```
 
@@ -56,6 +64,7 @@ entities/circle.lua
 
 ```lua
 return {
+  name = 'circle',
   render = function(props, children)
     if props.color == 'blue' then
       lg.setColor(0,0,1)
@@ -63,8 +72,7 @@ return {
     lg.circle('fill', 0, 0, 20)
     children() -- draw children (optional)
   end,
-  defaults = { color='white', x=0, y=0 },
-  name = 'circle' -- optional
+  defaults = { color='white', x=0, y=0 }
 }
 ```
 
@@ -73,7 +81,7 @@ states/start.lua
 ```lua
 return {
   enter = function(self)
-    local random_circle = circle{ x=50, y=30, color='blue' }
+    local random_circle = x2d.entity.circle{ x=50, y=30, color='blue' }
   end,
   update = function(self, dt) end,
   leave = function(self) end
@@ -84,7 +92,7 @@ systems/CircleMover.lua
 
 ```lua
 return function(dt)
-  for c, circ in circle:all() do
+  for c, circ in x2d.entity.circle:all() do
     circ.y = circ.y + dt * circ.dir
   end
 end

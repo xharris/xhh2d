@@ -1,10 +1,13 @@
 local M = {}
 
-local lume = require "engine.lume"
-M.entity = require 'engine.entity'
-M.state = require 'engine.state'
-local system = require 'engine.system'
+local lume = require "xhh2d.lume"
+local push = require 'xhh2d.push'
+M.entity = require 'xhh2d.entity'
+M.state = require 'xhh2d.state'
+local system = require 'xhh2d.system'
 
+M.lume = lume
+M.push = push
 entity = M.entity 
 state = M.state
 
@@ -27,10 +30,10 @@ function M.init(opts)
     math.randomseed(M._seed)
 
     opts = lume.merge({
-        global_modules = true,
-        path_entity = 'src.entities',
-        path_state = 'src.states',
-        path_system = 'src.systems'
+        global_modules = false,
+        path_entity = 'entities',
+        path_state = 'states',
+        path_system = 'systems'
     }, opts or {})
 
     M.state = {}
@@ -171,10 +174,24 @@ end
 --     return old_err(msg)
 -- end
 
--- love callbacks
-
+local w, h = love.window.getMode()
+push:setupScreen(w, h, w, h, {
+    fullscreen = love.window.getFullscreen(), 
+    resizable = true,
+    highdpi = true,
+    canvas = true
+})
 function love.load()
+    -- love.graphics.setDefaultFilter("nearest", "nearest")
     M.init()
+    local callbacks = {'keypressed', 'keyreleased'}
+    for _, name in ipairs(callbacks) do 
+        love[name] = function(...)
+            if M[name] then 
+                M[name](...)
+            end
+        end
+    end
     if M.load then 
         M.load()
     end
@@ -187,12 +204,30 @@ function love.update(dt)
     end
 end 
 
+-- resolution scaling stuff
+function M.getWidth()
+    return push:getWidth()
+end
+function M.getHeight()
+    return push:getHeight()
+end
+function M.mousePosition()
+    return push:toGame(love.mouse.getPosition())
+end
+
 function love.draw()
+    push:start()
     if M.draw then 
         M.draw(M.render)
     else 
         M.render()
     end
+    push:finish()
+end
+
+function love.resize(w, h)
+    if M.resize then M.resize(w, h) end 
+    push:resize(w, h)
 end
 
 function love.quit(...)
@@ -200,5 +235,6 @@ function love.quit(...)
         return M.quit(...)
     end
 end
+
 
 return M 

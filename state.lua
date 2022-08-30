@@ -1,4 +1,4 @@
-local lume = require "engine.lume"
+local lume = require "xhh2d.lume"
 local M = {}
 
 M.stack = {}
