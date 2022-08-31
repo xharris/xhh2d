@@ -212,7 +212,10 @@ function M.getHeight()
     return push:getHeight()
 end
 function M.mousePosition()
-    return push:toGame(love.mouse.getPosition())
+    local mx, my = push:toGame(love.mouse.getPosition())
+    if mx and my then 
+        return util.floor(mx), util.floor(my)
+    end
 end
 
 function love.draw()
