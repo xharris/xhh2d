@@ -12,6 +12,8 @@ end
 M.spawner = {}
 M.auto_stack = true
 M.round_pixels = true
+M._reorder = {}
+M._should_reorder = false
 
 local id = 0
 local Instance = class {
@@ -22,9 +24,9 @@ local Instance = class {
         self.children = skiplist()
     end,
     copy = function(self, other)
-        local reserved = {'_id', 'children', '_name', 'render'}
+        local reserved = {'_id', 'children', '_name', 'render', '_z'}
         for k, v in pairs(other) do 
-            if type(v) ~= 'function' and not lume.find(reserved, k) then 
+            if type(self[k]) ~= 'function' and not lume.find(reserved, k) then 
                 if type(v) == 'table' then 
                     self[k] = lume.clone(v)
                 else
@@ -35,13 +37,18 @@ local Instance = class {
         return self
     end,
     z = function(self, z)
+        -- set 
         if z ~= nil then
-            if self.parent and z ~= self._z then 
-                self.parent:remove(self)
-                self._z = z
-                self.parent:add(self)
+            local parent = self.parent
+            if parent then 
+                M._reorder[self._id] = {self, z}
+                M._should_reorder = true
             end
             return self
+        end
+        -- get 
+        if M._reorder[self._id] then 
+            return M._reorder[self._id][2]
         end
         return self._z
     end,
@@ -49,11 +56,13 @@ local Instance = class {
         local child
         for c = 1, select('#', ...) do 
             child = select(c, ...)
+            -- remove from current parent
             if child.parent then 
-                child.parent:remove(child)
+                child.parent.children:delete(child)
             end
-            child.parent = self
+            -- add to new parent
             self.children:insert(child)
+            child.parent = self
         end
         return self
     end,
@@ -61,7 +70,11 @@ local Instance = class {
         local child
         for c = 1, select('#', ...) do 
             child = select(c, ...)
+            -- remove from current parent
             self.children:delete(child)
+            -- add to root
+            M._root.children:insert(child)
+            child.parent = M._root
         end
     end,
     drawChildren = function(self)
@@ -95,10 +108,10 @@ local Instance = class {
     end,
     __ = {
         lt = function(a, b)
-            return (a._z or 0) < (b._z or 0)
+            return a._z < b._z
         end,
         le = function(a, b)
-            return (a._z or 0) <= (b._z or 0)
+            return a._z <= b._z
         end,
         tostring = function(self)
             return self._name .. '-' .. self._id
@@ -118,11 +131,14 @@ function M.new(opts)
         _opts = opts,
         all = function(t)
             return t.instances:ipairs()
+        end,
+        count = function(t)
+            return t.instances.size
         end
     }, {
         __call = function(t, args)
             local instance = Instance()
-            instance._name = opts.name or 'entity'
+            instance._name = opts.name
             instance.render = opts.render
 
             args = lume.merge(opts.defaults or {}, args or {})
@@ -170,6 +186,21 @@ local root = M.new{
 M._root = root()
 
 function M.draw()
+    -- check if reordering should be done 
+    if M._should_reorder then 
+        local parent, spawner 
+        for _, pair in pairs(M._reorder) do 
+            local ent, z = pair[1], pair[2]
+            parent, spawner = ent.parent, M.spawner[ent._name]
+            spawner.instances:delete(ent)
+            parent.children:delete(ent)
+            ent._z = z
+            spawner.instances:insert(ent)
+            parent.children:insert(ent)
+        end
+        M._should_reorder = false 
+        M._reorder = {}
+    end
     M._root:draw()
 end
 

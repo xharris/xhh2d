@@ -1,7 +1,21 @@
 local sl = require 'xhh2d.skiplist'
+local cls = require 'xhh2d.clasp'
 
 local expect = test.expect
 
+local object = cls{
+  init = function(self, value)
+    self.value = value or 0
+  end,
+  __ = {
+    lt = function(a, b)
+      return a.value < b.value
+    end,
+    le = function(a, b)
+      return a.value <= b.value
+    end
+  }
+}
 
 test.describe('skiplist', function()
   local list 
@@ -57,5 +71,28 @@ test.describe('skiplist', function()
       end
       expect(item).to.equal(e[i])
     end 
+  end)
+
+  test.it('reorder items', function()
+    local objs = {}
+    local o = 1
+    local size = 20
+    for i = 0, size * 2 do 
+      table.insert(objs, object(i))
+      list:insert(objs[o])
+      o = o + 1
+    end
+
+    o = 1
+    for i = -size, size do 
+      list:delete(objs[o])
+      objs[o].value = i
+      list:insert(objs[o])
+      o = o + 1
+    end
+
+    for i, item in list:ipairs() do 
+      expect(i - size - 1).to.equal(item.value)
+    end
   end)
 end)

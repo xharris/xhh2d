@@ -11,7 +11,6 @@ end
 local function insert(self, v)
 	local history = {}
 	local cur = self._head
-	local done = false
 	while cur do
 		if not cur.next or cur.next.value > v then 
 			-- move down
@@ -48,7 +47,6 @@ end
 
 local function delete(self, v)
 	local cur = self._head 
-	local done = false 
 	while cur do 
 		-- in a column before v and cut ties with it
 		if cur.next and cur.next.value == v then 

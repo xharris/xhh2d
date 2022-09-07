@@ -44,6 +44,7 @@ print(entity1)
 
 -- entity class
 for e, ent in circle:all() do end
+circle:count()
 
 -- system
 system.new(function(dt) end)
