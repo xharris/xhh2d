@@ -12,11 +12,20 @@ state.push(obj)
 state.pop()
 
 -- entity
-circle = entity.new{
+circle = x2d.entity.new{
   name = 'circle',
-  render = function(props, children) end
+  render = function(props, children) end,
+  defaults = {
+    prop1 = 5,
+    prop2 = function(self, args)
+      return args.prop1 * 20
+    end
+  },
+  validate = function(self)
+    assert(self.prop1 <= 10, 'prop1 cannot exceed 10')
+  end
 }
-entity1 = x.entity.circle{ ... } -- override default values
+entity1 = x2d.entity.circle{ ... } -- override default values
 -- entity('circle', {...})
 entity.destroy(entity1)
 print(entity.tree(entity1))
@@ -28,6 +37,7 @@ entity1:add(child1, child2, ...) -- self
 entity1:z(newIndex) -- self.z
 entity1:remove(child1, child2, ...)
 entity1:drawChildren() -- self
+entity1:copy(enitity2) -- self (shallow copies non-function properties from entity2 to entity1)
 entity1 [<, <=, >, >=] entity2 -- compare z value
 entity1 == entity2 -- same instance
 print(entity1)
@@ -43,6 +53,11 @@ sl:insert(v)
 sl:delete(v)
 for i, v in sl:iter() do
 sl:visualize()
+
+-- "global"
+x2d.getWidth()
+x2d.getHeight()
+x2d.mousePosition()
 ```
 
 ## example

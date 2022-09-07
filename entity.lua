@@ -21,6 +21,19 @@ local Instance = class {
         id = id + 1
         self.children = skiplist()
     end,
+    copy = function(self, other)
+        local reserved = {'_id', 'children', '_name', 'render'}
+        for k, v in pairs(other) do 
+            if type(v) ~= 'function' and not lume.find(reserved, k) then 
+                if type(v) == 'table' then 
+                    self[k] = lume.clone(v)
+                else
+                    self[k] = v
+                end
+            end
+        end
+        return self
+    end,
     z = function(self, z)
         if z ~= nil then
             if self.parent and z ~= self._z then 
@@ -54,12 +67,7 @@ local Instance = class {
     drawChildren = function(self)
         local child
         for _, child in self.children:ipairs() do 
-            if child._destroyed then 
-                _, err = self.children:delete(child)
-                if err then 
-                    error(err)
-                end
-            else 
+            if not child._destroyed then
                 child:draw()
             end
         end
@@ -119,13 +127,24 @@ function M.new(opts)
 
             args = lume.merge(opts.defaults or {}, args or {})
             for k, v in pairs(args or {}) do 
-                assert(not instance[k], k .. ' is a reserved entity property')
-                instance[k] = v
+                if args._id and instance[k] ~= nil then 
+                    -- another entity's properties being copied, so ignore error
+                else
+                    assert(not instance[k], k .. ' is a reserved entity property')
+                    if type(v) == 'function' then 
+                        instance[k] = v(instance, args)
+                    else 
+                        instance[k] = v
+                    end
+                end
             end
             instance._z = args.z or 0
+            if opts.validate then 
+                opts.validate(instance)
+            end
             
-            if M.root and instance ~= M.root then 
-                M.root:add(instance)
+            if M._root and instance ~= M._root then 
+                M._root:add(instance)
             end
             t.instances:insert(instance)
 
@@ -148,32 +167,42 @@ local root = M.new{
     defaults = { _root = true },
     name = 'root'
 }
-M.root = root()
+M._root = root()
 
 function M.draw()
-    M.root:draw()
+    M._root:draw()
 end
 
+-- TODO: doesnt work??
 function M.destroy(...)
     local instance
     for i = 1, select('#', ...) do 
         instance = select(i, ...)
+        if not instance._destroyed then
+            _, err = instance.parent.children:delete(instance)
+            if err then 
+                error(err)
+            end
+            M.spawner[instance._name].instances:delete(instance)
+        end
         instance._destroyed = true
     end
 end
 
-function M.tree(node, depth)
-    node = node or M.root
+function M.tree(node, maxDepth, depth)
+    node = node or M._root
     depth = depth or 0
+    if maxDepth ~= nil and depth > maxDepth then 
+        return ''
+    end
     local str = ''
     -- add node props
     for d = 1, depth do 
         str = str .. '|\t'
     end
-    str = str .. '{'
+    str = str .. '{' .. tostring(node)
     
     local props = {}
-    table.insert(props, tostring(node))
     if depth > 0 then 
         for k, v in pairs(node) do 
             if k ~= 'children' and (k == '_z' or string.sub(k, 1, 1) ~= '_') and type(v) ~= 'function' then 
@@ -181,19 +210,27 @@ function M.tree(node, depth)
             end
         end
     end
+    if #props > 0 then 
+        str = str .. ': '
+    end
     str = str .. table.concat(props, ', ') .. '}'
     -- go through children
     for _, child in node.children:ipairs() do
         if child and child._name and child.parent == node then
-            str = str .. '\n' .. M.tree(child, depth + 1)
+            str = str .. '\n' .. M.tree(child, maxDepth, depth + 1)
         end
     end
     return str
 end 
 
-return setmetatable(M, {
+function M.leaf(node)
+    return M.tree(node, 0)
+end
+
+return setmetatable({}, {
+    __index = M,
     __call = function(_, name, ...)
-        assert(M.spanwer[name], 'Entity spawner not found: '..tostring(name))
+        assert(M.spawner[name], 'Entity spawner not found: '..tostring(name))
         return M.spawner[name](...)
     end
 })

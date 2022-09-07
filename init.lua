@@ -4,12 +4,13 @@ local lume = require "xhh2d.lume"
 local push = require 'xhh2d.push'
 M.entity = require 'xhh2d.entity'
 M.state = require 'xhh2d.state'
-local system = require 'xhh2d.system'
+local system 
+system = require 'xhh2d.system'
 
 M.lume = lume
 M.push = push
-entity = M.entity 
-state = M.state
+local entity = M.entity 
+local state = M.state
 
 local function iterFiles(dir, fn)
     local info 
@@ -31,44 +32,43 @@ function M.init(opts)
 
     opts = lume.merge({
         global_modules = false,
+        auto_require = true,
         path_entity = 'entities',
         path_state = 'states',
         path_system = 'systems'
     }, opts or {})
 
-    M.state = {}
-    M.entity = {}
-    M.system = {}
+    if opts.auto_require then 
+        -- entities 
+        iterFiles(opts.path_entity, function(file, path)
+            local r = require(path)
+            M.entity[file] = entity.new(r)
+            -- imports[path] = M.entity[file]
+            if opts.global_modules then 
+                _G[file] = M.entity[file]
+            end
+        end)
 
-    -- entities 
-    iterFiles(opts.path_entity, function(file, path)
-        local r = require(path)
-        M.entity[file] = entity.new(r)
-        -- imports[path] = M.entity[file]
-        if opts.global_modules then 
-            _G[file] = M.entity[file]
-        end
-    end)
+        -- states 
+        iterFiles(opts.path_state, function(file, path)
+            local r = require(path)
+            M.state[file] = r
+            -- imports[path] = M.state[file]
+            if opts.global_modules then 
+                _G[file] = M.state[file]
+            end
+        end)
 
-    -- states 
-    iterFiles(opts.path_state, function(file, path)
-        local r = require(path)
-        M.state[file] = r
-        -- imports[path] = M.state[file]
-        if opts.global_modules then 
-            _G[file] = M.state[file]
-        end
-    end)
-
-    -- systems
-    iterFiles(opts.path_system, function(file, path)
-        local r = require(path)
-        M.system[file] = system.new(r)
-        -- imports[path] = M.state[file]
-        if opts.global_modules then 
-            _G[file] = M.system[file]
-        end
-    end)
+        -- systems
+        iterFiles(opts.path_system, function(file, path)
+            local r = require(path)
+            system[file] = system.new(r)
+            -- imports[path] = M.state[file]
+            if opts.global_modules then 
+                _G[file] = M.system[file]
+            end
+        end)
+    end
 end
 
 local time = 0
@@ -182,7 +182,7 @@ push:setupScreen(w, h, w, h, {
     canvas = true
 })
 function love.load()
-    -- love.graphics.setDefaultFilter("nearest", "nearest")
+    love.graphics.setDefaultFilter("nearest", "nearest")
     M.init()
     local callbacks = {'keypressed', 'keyreleased'}
     for _, name in ipairs(callbacks) do 
@@ -229,8 +229,8 @@ function love.draw()
 end
 
 function love.resize(w, h)
-    if M.resize then M.resize(w, h) end 
     push:resize(w, h)
+    if M.resize then M.resize(w, h, push._SCALE.x, push._SCALE.y) end 
 end
 
 function love.quit(...)
