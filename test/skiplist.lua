@@ -46,21 +46,16 @@ test.describe('skiplist', function()
   end)
 
   test.it('iterate while deleting', function()
-    local e = {}
-    for i = 1, 20 do 
-      list:insert(i)
-      if (i - 1) % 2 ~= 0 then 
-        table.insert(e, i)
-      end
+    local e = {1,2,4}
+    for item = 1, 5 do 
+      list:insert(item)
     end
 
     for i, item in list:ipairs() do 
-      print(item, e[i])
-      if i % 2 == 0 then 
-        print('delete', item + 1)
+      if item >= 2 then -- deletes 3 and 5
         list:delete(item + 1)
       end
-      -- expect(item).to.equal(e[i])
+      expect(item).to.equal(e[i])
     end 
   end)
 end)
