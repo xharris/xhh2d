@@ -191,12 +191,14 @@ function M.draw()
         local parent, spawner 
         for _, pair in pairs(M._reorder) do 
             local ent, z = pair[1], pair[2]
-            parent, spawner = ent.parent, M.spawner[ent._name]
-            spawner.instances:delete(ent)
-            parent.children:delete(ent)
-            ent._z = z
-            spawner.instances:insert(ent)
-            parent.children:insert(ent)
+            if z ~= ent._z then 
+                parent, spawner = ent.parent, M.spawner[ent._name]
+                spawner.instances:delete(ent)
+                parent.children:delete(ent)
+                ent._z = z
+                spawner.instances:insert(ent)
+                parent.children:insert(ent)
+            end
         end
         M._should_reorder = false 
         M._reorder = {}
