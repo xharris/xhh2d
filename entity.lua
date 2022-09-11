@@ -12,6 +12,7 @@ end
 M.spawner = {}
 M.auto_stack = true
 M.round_pixels = true
+M.auto_children = true
 M._reorder = {}
 M._should_reorder = false
 
@@ -23,8 +24,9 @@ local Instance = class {
         id = id + 1
         self.children = skiplist()
     end,
+    -- doesnt work completely? has too many side-effects
     copy = function(self, other)
-        local reserved = {'_id', 'children', '_name', 'render', '_z'}
+        local reserved = {'_id', 'children', '_name', 'render', '_z', 'parent'}
         for k, v in pairs(other) do 
             if type(self[k]) ~= 'function' and not lume.find(reserved, k) then 
                 if type(v) == 'table' then 
@@ -56,13 +58,15 @@ local Instance = class {
         local child
         for c = 1, select('#', ...) do 
             child = select(c, ...)
-            -- remove from current parent
-            if child.parent then 
-                child.parent.children:delete(child)
+            if child.parent ~= self then 
+                -- remove from current parent
+                if child.parent then 
+                    child.parent.children:delete(child)
+                end
+                -- add to new parent
+                self.children:insert(child)
+                child.parent = self
             end
-            -- add to new parent
-            self.children:insert(child)
-            child.parent = self
         end
         return self
     end,
@@ -97,11 +101,16 @@ local Instance = class {
                 lg.translate(floor(self.x or 0), floor(self.y or 0))
                 lg.translate(floor(self.ox or 0), floor(self.oy or 0))
             end
+            local called = false
             local children = function()
+                called = true
                 self:drawChildren()
             end
             -- srt 
             self:render(children)
+            if not called and M.auto_children then 
+                children()
+            end
             if M.auto_stack then love.graphics.pop() end
         end
         return self
@@ -185,24 +194,33 @@ local root = M.new{
 }
 M._root = root()
 
-function M.draw()
+function M.update(dt)
     -- check if reordering should be done 
     if M._should_reorder then 
         local parent, spawner 
-        for _, pair in pairs(M._reorder) do 
+        for k, pair in pairs(M._reorder) do 
             local ent, z = pair[1], pair[2]
             if z ~= ent._z then 
                 parent, spawner = ent.parent, M.spawner[ent._name]
                 spawner.instances:delete(ent)
                 parent.children:delete(ent)
                 ent._z = z
-                spawner.instances:insert(ent)
-                parent.children:insert(ent)
+            else 
+                M._reorder[k] = nil
             end
+        end
+        for _, pair in pairs(M._reorder) do 
+            local ent, z = pair[1], pair[2]
+            parent, spawner = ent.parent, M.spawner[ent._name]
+            spawner.instances:insert(ent)
+            parent.children:insert(ent)
         end
         M._should_reorder = false 
         M._reorder = {}
     end
+end
+
+function M.draw()
     M._root:draw()
 end
 

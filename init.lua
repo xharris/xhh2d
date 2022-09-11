@@ -69,6 +69,7 @@ end
 local time = 0
 function M.update(dt)
     time = time + dt 
+    entity.update(dt)
     state.update(dt)
     system.update(dt)
 end
@@ -167,12 +168,14 @@ function M.debug.markdown(no_print)
     out('# STATE')
     header{'name', 'stack index', 'starting', 'leaving', 'callbacks'}
     for name, st in pairs(M.state) do 
-        local idx = lume.find(state.stack, st)
-        local callbacks = {}
-        if st.enter then table.insert(callbacks, 'enter') end
-        if st.update then table.insert(callbacks, 'update') end
-        if st.leave then table.insert(callbacks, 'leave') end
-        row{name, idx, st._starting, st._leaving, table.concat(callbacks, ',')}
+        if type(st) == 'table' then 
+            local idx = lume.find(state.stack, st)
+            local callbacks = {}
+            if st.enter then table.insert(callbacks, 'enter') end
+            if st.update then table.insert(callbacks, 'update') end
+            if st.leave then table.insert(callbacks, 'leave') end
+            row{name, idx, st._starting, st._leaving, table.concat(callbacks, ',')}
+        end
     end
 
     out()
