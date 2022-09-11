@@ -29,6 +29,15 @@ end
 function M.init(opts)
     M._seed = os.time()
     math.randomseed(M._seed)
+    love.graphics.setDefaultFilter("nearest", "nearest")
+    local callbacks = {'keypressed', 'keyreleased'}
+    for _, name in ipairs(callbacks) do 
+        love[name] = function(...)
+            if M[name] then 
+                M[name](...)
+            end
+        end
+    end
 
     opts = lume.merge({
         global_modules = false,
@@ -37,36 +46,22 @@ function M.init(opts)
         path_state = 'states',
         path_system = 'systems'
     }, opts or {})
+    M.opts = opts
 
     if opts.auto_require then 
         -- entities 
         iterFiles(opts.path_entity, function(file, path)
-            local r = require(path)
-            M.entity[file] = entity.new(r)
-            -- imports[path] = M.entity[file]
-            if opts.global_modules then 
-                _G[file] = M.entity[file]
-            end
+            M.loadEntity(file, path)
         end)
 
         -- states 
         iterFiles(opts.path_state, function(file, path)
-            local r = require(path)
-            M.state[file] = r
-            -- imports[path] = M.state[file]
-            if opts.global_modules then 
-                _G[file] = M.state[file]
-            end
+            M.loadState(file, path)
         end)
 
         -- systems
         iterFiles(opts.path_system, function(file, path)
-            local r = require(path)
-            system[file] = system.new(r)
-            -- imports[path] = M.state[file]
-            if opts.global_modules then 
-                _G[file] = M.system[file]
-            end
+            M.loadSystem(file, path)
         end)
     end
 end
@@ -80,6 +75,39 @@ end
 
 function M.render()
     entity.draw()
+end
+
+function M.loadEntity(name, path)
+    local r = require(path)
+    if r then 
+        M.entity[name] = entity.new(r)
+        -- imports[path] = M.entity[file]
+        if M.opts.global_modules then 
+            _G[name] = M.entity[name]
+        end
+    end
+end
+
+function M.loadState(name, path)
+    local r = require(path)
+    if r then 
+        M.state[name] = r
+        -- imports[path] = M.state[file]
+        if M.opts.global_modules then 
+            _G[name] = M.state[name]
+        end
+    end
+end
+
+function M.loadSystem(name, path)
+    local r = require(path)
+    if type(r) == 'function' then 
+        system[name] = system.new(r)
+        -- imports[path] = M.state[file]
+        if M.opts.global_modules then 
+            _G[name] = M.system[name]
+        end
+    end
 end
 
 M.debug = {}
@@ -181,21 +209,12 @@ push:setupScreen(w, h, w, h, {
     highdpi = true,
     canvas = true
 })
-function love.load()
-    love.graphics.setDefaultFilter("nearest", "nearest")
-    M.init()
-    local callbacks = {'keypressed', 'keyreleased'}
-    for _, name in ipairs(callbacks) do 
-        love[name] = function(...)
-            if M[name] then 
-                M[name](...)
-            end
-        end
-    end
-    if M.load then 
-        M.load()
-    end
-end
+-- function love.load()
+--     M.init()
+--     if M.load then 
+--         M.load()
+--     end
+-- end
 
 function love.update(dt)
     M.update(dt)

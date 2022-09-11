@@ -168,7 +168,7 @@ function M.new(opts)
         end
     })
     for k, v in pairs(opts) do 
-        if lume.find({'name', 'render', 'defaults'}, k) ~= nil then 
+        if lume.find({'name', 'render', 'defaults'}, k) == nil then 
             spawner[k] = v
         end
     end
