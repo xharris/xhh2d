@@ -205,15 +205,9 @@ function M.update(dt)
                 spawner.instances:delete(ent)
                 parent.children:delete(ent)
                 ent._z = z
-            else 
-                M._reorder[k] = nil
+                spawner.instances:insert(ent)
+                parent.children:insert(ent)
             end
-        end
-        for _, pair in pairs(M._reorder) do 
-            local ent, z = pair[1], pair[2]
-            parent, spawner = ent.parent, M.spawner[ent._name]
-            spawner.instances:insert(ent)
-            parent.children:insert(ent)
         end
         M._should_reorder = false 
         M._reorder = {}
